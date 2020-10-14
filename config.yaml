@@ -1,0 +1,5 @@
+timeout: 60
+led_gpio_number: 17
+shutter_speed: 6000000
+camera_wait_time: 30
+

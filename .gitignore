@@ -127,3 +127,15 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# custom
+
+free.chsauer.client.certificate.zip
+/raven_cert
+/topology_files
+/ipynb_checkpoints
+responses.log
+wpa_supplicant.conf
+/.idea
+/.vscode
+image_detection.ipynb
