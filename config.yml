@@ -1,0 +1,10 @@
+timeout: 60
+led_gpio_number: 21
+shutter_speed: 6000000
+camera_wait_time: 30
+canny_threshold1: 80
+canny_threshold2: 100
+
+bounding_box_same_y_threshold: 15
+bounding_box_same_height_threshold: 5
+image_rotation: 178

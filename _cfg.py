@@ -28,11 +28,39 @@ class Config:
     Time for the camera to process results etc. Default docs suggests 30 seconds
     """
 
+    canny_threshold1: int
+    """
+    Threshold1 for the cv2 canny algorithm
+    """
+
+    canny_threshold2: int
+    """
+    Threshold2 for the cv2 canny algorithm
+    """
+
+    bounding_box_same_y_threshold: int
+    """
+    Bounding boxes which y axis varies less than this are considered on the same "line"
+    """
+
+    bounding_box_same_height_threshold: int
+    """
+    Bounding boxes which height axis varies less than this are considered to be of the same height
+    """
+
+    image_rotation: float
+    """
+    Degrees to rotate the image, e.g. to correct skew for me its 178
+    """
+
 
 default_path = str(pathlib.Path(__file__).parent / "config.yml")
 
 path = os.environ.get("GAS_METER_CONFIG_PATH", default_path)
 logger.info("loading config from {}", path)
+
 with open(path, "r") as yml_file:
     _data = yaml.safe_load(yml_file)
     config = Config(**_data)
+
+logger.info("config is: {config}", config=config)

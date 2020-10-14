@@ -575,6 +575,19 @@ version = "4.8.0"
 ptyprocess = ">=0.5"
 
 [[package]]
+category = "main"
+description = "A pure Python interface for the Raspberry Pi camera module."
+name = "picamera"
+optional = false
+python-versions = "*"
+version = "1.13"
+
+[package.extras]
+array = ["numpy"]
+doc = ["sphinx"]
+test = ["coverage", "pytest", "mock", "pillow", "numpy"]
+
+[[package]]
 category = "dev"
 description = "Tiny 'shelve'-like database with concurrency support"
 name = "pickleshare"
@@ -860,7 +873,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["pytest (>=3.5,<3.7.3 || >3.7.3)", "pytest-checkdocs (>=1.2.3)", "pytest-flake8", "pytest-cov", "jaraco.test (>=3.2.0)", "jaraco.itertools", "func-timeout", "pytest-black (>=0.3.7)", "pytest-mypy"]
 
 [metadata]
-content-hash = "0520314ab931bad3af1d869e17b257d65f0d9455372c9f06cd9a56f9882481da"
+content-hash = "fbc84c911a68f54deba9c513b7df4c29798f07b9f725786a6307dda07218daab"
 lock-version = "1.0"
 python-versions = "^3.7"
 
@@ -1155,6 +1168,9 @@ parso = [
 pexpect = [
     {file = "pexpect-4.8.0-py2.py3-none-any.whl", hash = "sha256:0b48a55dcb3c05f3329815901ea4fc1537514d6ba867a152b581d69ae3710937"},
     {file = "pexpect-4.8.0.tar.gz", hash = "sha256:fc65a43959d153d0114afe13997d439c22823a27cefceb5ff35c2178c6784c0c"},
+]
+picamera = [
+    {file = "picamera-1.13.tar.gz", hash = "sha256:890815aa01e4d855a6a95dd3ad0953b872a6b954982106407df0c5a31a163e50"},
 ]
 pickleshare = [
     {file = "pickleshare-0.7.5-py2.py3-none-any.whl", hash = "sha256:9649af414d74d4df115d5d718f82acb59c9d418196b7b4290ed47a12ce62df56"},

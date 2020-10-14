@@ -6,9 +6,12 @@ from typing import List
 import cv2
 import numpy as np
 import pytesseract
+from loguru import logger
+import _cfg
 
 _debug = True
 _timestamp = datetime.utcnow().strftime("%Y_%m_%d-%H_%M_%S")
+_config = _cfg.config
 
 
 def _rotate(rotation_degrees: float, image: np.ndarray) -> np.ndarray:
@@ -20,7 +23,7 @@ def _rotate(rotation_degrees: float, image: np.ndarray) -> np.ndarray:
 
 
 def _get_edged(image: np.ndarray) -> np.ndarray:
-    edged = cv2.Canny(image, 80, 100, 1)  # todo thresholds in config
+    edged = cv2.Canny(image, _config.canny_threshold1, _config.canny_threshold2, 1)
     return edged
 
 
@@ -88,8 +91,8 @@ def find_aligned_boxes(bb, bounding_boxes):
     for candidate in bounding_boxes[1:]:
         x1, y1, w1, h1 = bb
         x2, y2, w2, h2 = candidate
-        same_y = abs(y1 - y2) < 15  # todo cfg
-        same_h = abs(h1 - h2) < 3
+        same_y = abs(y1 - y2) < _config.bounding_box_same_y_threshold
+        same_h = abs(h1 - h2) < _config.bounding_box_same_height_threshold
 
         if same_y and same_h:
             result.append(candidate)
@@ -144,13 +147,13 @@ def ocr(input_: io.BytesIO) -> float:
     _write_disk(gray, "0_gray")  # todo with and use counter
     del image
 
-    rotated = _rotate(178, gray)  # todo cfg
+    rotated = _rotate(_config.image_rotation, gray)
     _write_disk(rotated, "1_rotated")
     del gray
 
     edged = _get_edged(rotated)
-    cv2.rectangle(edged, (0, 0), (1024, 450), (255, 255, 255), -2)  # upper crap
-    cv2.rectangle(edged, (750, 400), (1000, 600), (255, 255, 255), -2)  # last digit and m3
+    cv2.rectangle(edged, (0, 0), (1024, 450), (0, 0, 0), -2)  # upper crap # todo config?
+    cv2.rectangle(edged, (750, 400), (1000, 600), (0, 0, 0), -2)  # last digit and m3
     _write_disk(edged, "2_edged")
 
     bounding_boxes, filtered_contours = find_contours(edged)
@@ -163,7 +166,7 @@ def ocr(input_: io.BytesIO) -> float:
 
     final_result = ocr_result_to_value(numbers_as_text)
 
-    print(f"the detected result is: {final_result}")
+    logger.info("the detected result is: {final_result}", final_result=final_result)
 
     return final_result
 
