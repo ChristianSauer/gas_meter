@@ -53,6 +53,19 @@ class Config:
     Degrees to rotate the image, e.g. to correct skew for me its 178
     """
 
+    ravendb_pem_file: str
+    """
+    File name of the PEM for ravendb. Should be in a directory in this directory
+    """
+
+    ravendb_url: str
+    """
+    url of ravendb
+    """
+
+    ravendb_db: str
+    "ravendb database, must exist"
+
 
 default_path = str(pathlib.Path(__file__).parent / "config.yml")
 

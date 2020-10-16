@@ -1,7 +1,7 @@
 import io
 import pathlib
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 import cv2
 import numpy as np
@@ -125,16 +125,27 @@ def image_to_text(image, sorted_aligned_bb) -> List[str]:
     return result
 
 
-def ocr_result_to_value(text: List[str]) -> float:
-    cleaned = [x.strip() for x in text]
-    # assert len(cleaned) == 7, "number of recognized digits is not 7"  # todo better check
+def ocr_result_to_value(text: List[str]) -> Optional[float]:
 
-    result = f'{"".join(cleaned[:5])}.{"".join(cleaned[5:])}' # number should look like "12345.23" -
+    cleaned = [x.strip() for x in text]
+
+    if len(cleaned) != 7:
+        logger.warning(f"{''.join(text)} is not of length 7")
+        return None
+
+    for txt in cleaned:
+        if len(txt) == 1:
+            continue
+
+        logger.warning(f"{''.join(txt)} is not a single digit")
+        return None
+
+    result = f'{"".join(cleaned[:5])}.{"".join(cleaned[5:])}'  # number should look like "12345.23" -
     # we ignore the third fraction because its always changing when the gas meter is in operation
     return float(result)
 
 
-def ocr(input_: io.BytesIO) -> float:
+def ocr(input_: io.BytesIO) -> Optional[float]:
     input_.seek(0)
 
     global _timestamp
@@ -169,8 +180,6 @@ def ocr(input_: io.BytesIO) -> float:
     logger.info("the detected result is: {final_result}", final_result=final_result)
 
     return final_result
-
-    # todo throw error if n bb < 5 and think about fractions?
 
 
 def identify_likely_gas_numbers(bounding_boxes, edged):

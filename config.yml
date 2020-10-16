@@ -8,3 +8,7 @@ canny_threshold2: 100
 bounding_box_same_y_threshold: 15
 bounding_box_same_height_threshold: 5
 image_rotation: 178
+
+ravendb_pem_file: raven_cert/PEM/free.chsauer.client.certificate.pem
+ravendb_url: https://a.free.chsauer.ravendb.cloud
+ravendb_db: readings

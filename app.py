@@ -30,7 +30,12 @@ def capture():
 
                 result = _image_processing.ocr(data)
 
+                if not result:
+                    logger.warning("characters not recognized, uploading no data and trying again")
+                    continue
+
                 _ravendb.store_result(result)
+                logger.info("result stored")
 
             _delay_for_timeout_seconds()
 
