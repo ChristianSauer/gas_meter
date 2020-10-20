@@ -1,6 +1,6 @@
 import io
-import pathlib
-from datetime import datetime
+import uuid
+from datetime import datetime, timedelta
 from typing import List, Optional
 
 import cv2
@@ -8,10 +8,48 @@ import numpy as np
 import pytesseract
 from loguru import logger
 import _cfg
+import _ravendb
 
 _debug = True
 _timestamp = datetime.utcnow().strftime("%Y_%m_%d-%H_%M_%S")
 _config = _cfg.config
+
+
+class ImageStore:
+    def __init__(self):
+        self._count = 0
+        self._images = []
+
+    def __enter__(self):
+        self._store = _ravendb.get_store()
+        self._session = self._store.open_session(database="debug_data")
+
+        utc_now = datetime.utcnow().isoformat()[:-3]+'Z'
+
+        id_ = str(uuid.uuid4()).replace("-", "")
+
+        expires = (datetime.utcnow() + timedelta(hours=_config.image_retaining_hours)).isoformat()[:-3]+'Z'
+        self._document = _ravendb.DebugData(utc_now, f"debug_data/gas/{id_}")
+        self._session.save_entity(self._document.Id, self._document, {}, {"@expires":  expires, "@id": self._document.Id}, {})
+        self._session.save_changes()
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        self._session.save_changes()
+        for img in self._images:
+            img: io.BytesIO
+            img.close()
+
+        self._images = None
+
+    def add_image(self, image: np.ndarray, name: str):
+        is_success, buffer = cv2.imencode(".jpg", image)
+        io_buf = io.BytesIO(buffer)
+
+        self._session.advanced.attachment.store(self._document.Id, f"{self._count}_{name}.jpg", io_buf, "image/jpg")
+        self._session.save_changes()
+        io_buf.close()
+        self._count += 1
 
 
 def _rotate(rotation_degrees: float, image: np.ndarray) -> np.ndarray:
@@ -27,21 +65,7 @@ def _get_edged(image: np.ndarray) -> np.ndarray:
     return edged
 
 
-def _write_disk(image: np.ndarray, name: str):
-    # todo remove older folders
-    # todo respect debug
-    folder = pathlib.Path(__file__).parent / f"debug/{_timestamp}"
-    folder.mkdir(exist_ok=True, parents=True)
-
-    file_name = folder / f"{name}.jpg"
-
-    ret = cv2.imwrite(str(file_name), image)
-
-    if not ret:
-        raise Exception(f"could not save file to '{file_name}'")
-
-
-def find_contours(edged):
+def find_contours(edged, img_store):
     contours, _ = cv2.findContours(edged.copy(),
                                    cv2.RETR_EXTERNAL,
                                    cv2.CHAIN_APPROX_NONE)
@@ -71,7 +95,7 @@ def find_contours(edged):
 
         cv2.rectangle(dummy, (x, y), (x + w, y + h), (255, 0, 255), 2)
 
-    _write_disk(dummy, "3_contours")
+    img_store.add_image(dummy, "contours")
     return bounding_boxes, filtered_contours
 
 
@@ -104,7 +128,7 @@ def sort_bounding_boxes_left_to_right(aligned_bb):
     return sorted(aligned_bb, key=lambda x: x[0])
 
 
-def image_to_text(image, sorted_aligned_bb) -> List[str]:
+def image_to_text(image, sorted_aligned_bb, img_store) -> List[str]:
     result = []
 
     for i, bb in enumerate(sorted_aligned_bb):
@@ -112,6 +136,8 @@ def image_to_text(image, sorted_aligned_bb) -> List[str]:
         im = image[y - 5:y + h + 5, x - 5:x + w + 5]
 
         im = cv2.bitwise_not(im)
+
+        img_store.add_image(im, f"img_{i}")
 
         _, im = cv2.threshold(im, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)  # black/white
 
@@ -130,7 +156,7 @@ def ocr_result_to_value(text: List[str]) -> Optional[float]:
     cleaned = [x.strip() for x in text]
 
     if len(cleaned) != 7:
-        logger.warning(f"{''.join(text)} is not of length 7")
+        logger.warning(f"{''.join(cleaned)} is not of length 7 has only {len(cleaned)}")
         return None
 
     for txt in cleaned:
@@ -150,44 +176,49 @@ def ocr(input_: io.BytesIO) -> Optional[float]:
 
     global _timestamp
     _timestamp = datetime.utcnow().strftime("%Y_%m_%d-%H_%M_%S")
+    with ImageStore() as img_store:
+        image = cv2.imdecode(np.fromstring(input_.read(), np.uint8), 1)
+        img_store.add_image(image, "original")
 
-    image = cv2.imdecode(np.fromstring(input_.read(), np.uint8), 1)
-    _write_disk(image, "00_original")
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        img_store.add_image(gray, "gray")
+        del image
 
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    _write_disk(gray, "0_gray")  # todo with and use counter
-    del image
+        rotated = _rotate(_config.image_rotation, gray)
+        img_store.add_image(rotated, "rotated")
+        del gray
 
-    rotated = _rotate(_config.image_rotation, gray)
-    _write_disk(rotated, "1_rotated")
-    del gray
+        blurred = cv2.GaussianBlur(rotated, (_config.blur_ksize_width, _config.blur_ksize_height), 0)
+        img_store.add_image(rotated, "blurred")
+        del rotated
 
-    edged = _get_edged(rotated)
-    cv2.rectangle(edged, (0, 0), (1024, 450), (0, 0, 0), -2)  # upper crap # todo config?
-    cv2.rectangle(edged, (750, 400), (1000, 600), (0, 0, 0), -2)  # last digit and m3
-    _write_disk(edged, "2_edged")
+        edged = _get_edged(blurred)
+        cv2.rectangle(edged, (0, 0), (1024, 450), (0, 0, 0), -2)  # upper crap # todo config?
+        cv2.rectangle(edged, (750, 400), (1000, 600), (0, 0, 0), -2)  # last digit and m3
+        cv2.rectangle(edged, (0, 400), (350, 600), (00, 0, 0), -2)  # before the first digit
+        img_store.add_image(edged, "edged")
 
-    bounding_boxes, filtered_contours = find_contours(edged)
+        bounding_boxes, filtered_contours = find_contours(edged, img_store)
 
-    sorted_aligned_bb = identify_likely_gas_numbers(bounding_boxes, edged)
-    del edged
+        sorted_aligned_bb = identify_likely_gas_numbers(bounding_boxes, edged, img_store)
+        del edged
 
-    numbers_as_text = image_to_text(rotated, sorted_aligned_bb)
-    del rotated
+        numbers_as_text = image_to_text(blurred, sorted_aligned_bb, img_store)
+        del blurred
 
-    final_result = ocr_result_to_value(numbers_as_text)
+        final_result = ocr_result_to_value(numbers_as_text)
 
-    logger.info("the detected result is: {final_result}", final_result=final_result)
+        logger.info("the detected result is: {final_result}", final_result=final_result)
 
-    return final_result
+        return final_result
 
 
-def identify_likely_gas_numbers(bounding_boxes, edged):
+def identify_likely_gas_numbers(bounding_boxes, edged, img_store):
     aligned_bb = find_aligned_bounding_boxes(bounding_boxes)
     dummy = edged.copy()  # todo function
     for bb in aligned_bb:
         x, y, w, h = bb
         cv2.rectangle(dummy, (x, y), (x + w, y + h), (255, 0, 255), 2)
-    _write_disk(dummy, "5_aligned_contours")
+    img_store.add_image(dummy, "aligned_contours")
     sorted_aligned_bb = sort_bounding_boxes_left_to_right(aligned_bb)
     return sorted_aligned_bb

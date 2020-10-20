@@ -66,6 +66,15 @@ class Config:
     ravendb_db: str
     "ravendb database, must exist"
 
+    image_retaining_hours: int
+    "hours to retain debug images in ravendb"
+
+    blur_ksize_width: int
+    "ksize.width for the gaussian blur kernel"
+
+    blur_ksize_height: int
+    "ksize.height for the gaussian blur kernel"
+
 
 default_path = str(pathlib.Path(__file__).parent / "config.yml")
 

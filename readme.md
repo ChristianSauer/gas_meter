@@ -56,14 +56,8 @@ cd /usr/share/tesseract-ocr/5/tessdata
 sudo wget https://github.com/tesseract-ocr/tessdata/raw/master/eng.traineddata
 ```
 
-1. TODO setup code and autostart 
-1. todo fix scipy? e.g. see https://stackoverflow.com/questions/59994060/cant-install-scipy-to-raspberry-pi-4-raspbian
-1. todo tesseract install
-
+1. setup ravendb
 
 For RavenDb:
-1. Async?
-1. tutorial should probably include @dataclass
-1. Error message weird if no hashable object
-1. Type the public api
-1. Especially the cert param, add that to docs, too
+
+1. explain dbs to build (debug and readings), expirs!
