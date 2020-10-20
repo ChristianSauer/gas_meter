@@ -15,3 +15,39 @@ ravendb_pem_file: raven_cert/PEM/free.chsauer.client.certificate.pem
 ravendb_url: https://a.free.chsauer.ravendb.cloud
 ravendb_db: readings
 image_retaining_hours: 12
+
+positions:
+  - x: 358
+    y: 471
+    w: 20
+    h: 40
+
+  - x: 413
+    y: 471
+    w: 20
+    h: 40
+
+  - x: 470
+    y: 471
+    w: 20
+    h: 40
+
+  - x: 526
+    y: 471
+    w: 20
+    h: 40
+
+  - x: 583
+    y: 471
+    w: 20
+    h: 40
+
+  - x: 642
+    y: 471
+    w: 20
+    h: 40
+
+  - x: 703
+    y: 471
+    w: 20
+    h: 40

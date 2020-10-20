@@ -1,8 +1,18 @@
+from typing import List, Dict
+from typing_extensions import TypedDict
+
 import yaml
 import os
 import pathlib
 from loguru import logger
 from dataclasses import dataclass
+
+
+class Positions(TypedDict):
+    x: int
+    y: int
+    w: int
+    h: int
 
 
 @dataclass()
@@ -74,6 +84,9 @@ class Config:
 
     blur_ksize_height: int
     "ksize.height for the gaussian blur kernel"
+
+    positions: List[Dict[str, int]]
+    """List of number positions. If not empty, auto detect is used"""
 
 
 default_path = str(pathlib.Path(__file__).parent / "config.yml")

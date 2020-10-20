@@ -24,13 +24,14 @@ class ImageStore:
         self._store = _ravendb.get_store()
         self._session = self._store.open_session(database="debug_data")
 
-        utc_now = datetime.utcnow().isoformat()[:-3]+'Z'
+        utc_now = datetime.utcnow().isoformat()[:-3] + 'Z'
 
         id_ = str(uuid.uuid4()).replace("-", "")
 
-        expires = (datetime.utcnow() + timedelta(hours=_config.image_retaining_hours)).isoformat()[:-3]+'Z'
+        expires = (datetime.utcnow() + timedelta(hours=_config.image_retaining_hours)).isoformat()[:-3] + 'Z'
         self._document = _ravendb.DebugData(utc_now, f"debug_data/gas/{id_}")
-        self._session.save_entity(self._document.Id, self._document, {}, {"@expires":  expires, "@id": self._document.Id}, {})
+        self._session.save_entity(self._document.Id, self._document, {},
+                                  {"@expires": expires, "@id": self._document.Id}, {})
         self._session.save_changes()
         return self
 
@@ -46,7 +47,8 @@ class ImageStore:
         is_success, buffer = cv2.imencode(".jpg", image)
         io_buf = io.BytesIO(buffer)
 
-        self._session.advanced.attachment.store(self._document.Id, f"{self._count}_{name}.jpg", io_buf, "image/jpg")
+        counter = str(self._count).zfill(3)
+        self._session.advanced.attachment.store(self._document.Id, f"{counter}_{name}.jpg", io_buf, "image/jpg")
         self._session.save_changes()
         io_buf.close()
         self._count += 1
@@ -100,7 +102,6 @@ def find_contours(edged, img_store):
 
 
 def find_aligned_bounding_boxes(bounding_boxes):
-
     aligned_bounding_boxes = []
     for bb in bounding_boxes:
         tmp = find_aligned_boxes(bb, bounding_boxes)
@@ -145,14 +146,13 @@ def image_to_text(image, sorted_aligned_bb, img_store) -> List[str]:
                                         lang='eng',
                                         config='--psm 13 --oem 3 -c tessedit_char_whitelist=0123456789', )
         nice = x.strip()
-        print(f"image number {i} recognized as '{nice}'")
+        logger.info(f"image number {i} recognized as '{nice}'. Image position: x:{x} y:{y} w:{w} h:{h}")
 
         result.append(x)
     return result
 
 
 def ocr_result_to_value(text: List[str]) -> Optional[float]:
-
     cleaned = [x.strip() for x in text]
 
     if len(cleaned) != 7:
@@ -169,6 +169,10 @@ def ocr_result_to_value(text: List[str]) -> Optional[float]:
     result = f'{"".join(cleaned[:5])}.{"".join(cleaned[5:])}'  # number should look like "12345.23" -
     # we ignore the third fraction because its always changing when the gas meter is in operation
     return float(result)
+
+
+def _use_positions():
+    return [(p["x"], p["y"], p["w"], p["h"]) for p in _config.positions]
 
 
 def ocr(input_: io.BytesIO) -> Optional[float]:
@@ -193,14 +197,15 @@ def ocr(input_: io.BytesIO) -> Optional[float]:
         del rotated
 
         edged = _get_edged(blurred)
-        cv2.rectangle(edged, (0, 0), (1024, 450), (0, 0, 0), -2)  # upper crap # todo config?
-        cv2.rectangle(edged, (750, 400), (1000, 600), (0, 0, 0), -2)  # last digit and m3
-        cv2.rectangle(edged, (0, 400), (350, 600), (00, 0, 0), -2)  # before the first digit
-        img_store.add_image(edged, "edged")
 
-        bounding_boxes, filtered_contours = find_contours(edged, img_store)
+        if _config.positions:
+            logger.info("config has pre-defined positions, no auto detection")
+            sorted_aligned_bb = _use_positions()
+        else:
+            logger.info("detecting positions of numbers automatically.")
 
-        sorted_aligned_bb = identify_likely_gas_numbers(bounding_boxes, edged, img_store)
+            sorted_aligned_bb = _auto_detect_numbers(edged, img_store)
+
         del edged
 
         numbers_as_text = image_to_text(blurred, sorted_aligned_bb, img_store)
@@ -213,12 +218,21 @@ def ocr(input_: io.BytesIO) -> Optional[float]:
         return final_result
 
 
+def _auto_detect_numbers(edged, img_store):
+    cv2.rectangle(edged, (0, 0), (1024, 450), (0, 0, 0), -2)  # upper crap # todo config?
+    cv2.rectangle(edged, (750, 400), (1000, 600), (0, 0, 0), -2)  # last digit and m3
+    cv2.rectangle(edged, (0, 400), (350, 600), (00, 0, 0), -2)  # before the first digit
+    img_store.add_image(edged, "edged")
+    bounding_boxes, filtered_contours = find_contours(edged, img_store)
+    sorted_aligned_bb = identify_likely_gas_numbers(bounding_boxes, edged, img_store)
+    return sorted_aligned_bb
+
+
 def identify_likely_gas_numbers(bounding_boxes, edged, img_store):
     aligned_bb = find_aligned_bounding_boxes(bounding_boxes)
-    dummy = edged.copy()  # todo function
+    dummy = edged.copy()
     for bb in aligned_bb:
         x, y, w, h = bb
-        cv2.rectangle(dummy, (x, y), (x + w, y + h), (255, 0, 255), 2)
     img_store.add_image(dummy, "aligned_contours")
     sorted_aligned_bb = sort_bounding_boxes_left_to_right(aligned_bb)
     return sorted_aligned_bb
