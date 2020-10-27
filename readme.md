@@ -61,3 +61,10 @@ sudo wget https://github.com/tesseract-ocr/tessdata/raw/master/eng.traineddata
 For RavenDb:
 
 1. explain dbs to build (debug and readings), expirs!
+
+1. setup service
+```shell script
+sudo cp gasmeter.service /etc/systemd/system/gasmeter.service
+sudo systemctl start gasmeter.service
+sudo systemctl enable gasmeter.service
+```

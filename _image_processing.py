@@ -231,8 +231,6 @@ def _auto_detect_numbers(edged, img_store):
 def identify_likely_gas_numbers(bounding_boxes, edged, img_store):
     aligned_bb = find_aligned_bounding_boxes(bounding_boxes)
     dummy = edged.copy()
-    for bb in aligned_bb:
-        x, y, w, h = bb
     img_store.add_image(dummy, "aligned_contours")
     sorted_aligned_bb = sort_bounding_boxes_left_to_right(aligned_bb)
     return sorted_aligned_bb

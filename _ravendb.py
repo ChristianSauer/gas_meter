@@ -12,10 +12,8 @@ _store = None
 
 
 @dataclass(eq=True, frozen=True)
-class GasReading:
-    reading_type: str
-    value: float
-    date: str
+class Data:
+    readingType: str
 
 
 @dataclass(eq=True, frozen=True)
@@ -24,13 +22,22 @@ class DebugData:
     Id: str
 
 
-def store_result(value: float):
-    reading = GasReading(reading_type="gas", value=value, date=datetime.datetime.utcnow().isoformat()[:-3]+'Z')
+doc_id = "data/gas"
 
+
+def store_result(value: float):
     store = get_store()
 
     with store.open_session() as session:
-        session.store(reading)
+        gas_doc = session.load(doc_id, object_type=Data)
+
+        if not gas_doc:
+            data = Data(readingType="gas")
+            session.store(data, key=doc_id)
+            session.save_changes()
+
+        time_series = session.time_series_for(doc_id, "gas m3 usage")
+        time_series.append(datetime.datetime.utcnow(), [value])
         session.save_changes()
 
 

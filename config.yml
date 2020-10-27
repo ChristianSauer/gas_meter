@@ -14,7 +14,7 @@ image_rotation: 179.2
 ravendb_pem_file: raven_cert/PEM/free.chsauer.client.certificate.pem
 ravendb_url: https://a.free.chsauer.ravendb.cloud
 ravendb_db: readings
-image_retaining_hours: 12
+image_retaining_hours: 1
 
 positions:
   - x: 358
