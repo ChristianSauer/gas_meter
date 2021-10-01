@@ -1,6 +1,5 @@
 import io
-import uuid
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List, Optional
 
 import cv2
@@ -8,50 +7,11 @@ import numpy as np
 import pytesseract
 from loguru import logger
 import _cfg
-import _ravendb
+from imagestore import ImageStore
 
 _debug = True
 _timestamp = datetime.utcnow().strftime("%Y_%m_%d-%H_%M_%S")
 _config = _cfg.config
-
-
-class ImageStore:
-    def __init__(self):
-        self._count = 0
-        self._images = []
-
-    def __enter__(self):
-        self._store = _ravendb.get_store()
-        self._session = self._store.open_session(database="debug_data")
-
-        utc_now = datetime.utcnow().isoformat()[:-3] + 'Z'
-
-        id_ = str(uuid.uuid4()).replace("-", "")
-
-        expires = (datetime.utcnow() + timedelta(hours=_config.image_retaining_hours)).isoformat()[:-3] + 'Z'
-        self._document = _ravendb.DebugData(utc_now, f"debug_data/gas/{id_}")
-        self._session.save_entity(self._document.Id, self._document, {},
-                                  {"@expires": expires, "@id": self._document.Id}, {})
-        self._session.save_changes()
-        return self
-
-    def __exit__(self, exc_type, exc_value, exc_traceback):
-        self._session.save_changes()
-        for img in self._images:
-            img: io.BytesIO
-            img.close()
-
-        self._images = None
-
-    def add_image(self, image: np.ndarray, name: str):
-        is_success, buffer = cv2.imencode(".jpg", image)
-        io_buf = io.BytesIO(buffer)
-
-        counter = str(self._count).zfill(3)
-        self._session.advanced.attachment.store(self._document.Id, f"{counter}_{name}.jpg", io_buf, "image/jpg")
-        self._session.save_changes()
-        io_buf.close()
-        self._count += 1
 
 
 def _rotate(rotation_degrees: float, image: np.ndarray) -> np.ndarray:
@@ -136,9 +96,9 @@ def image_to_text(image, sorted_aligned_bb, img_store) -> List[str]:
         x, y, w, h = bb
         im = image[y - 5:y + h + 5, x - 5:x + w + 5]
 
-        im = cv2.bitwise_not(im)
-
         img_store.add_image(im, f"img_{i}")
+
+        im = cv2.bitwise_not(im)
 
         _, im = cv2.threshold(im, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)  # black/white
 
@@ -149,13 +109,20 @@ def image_to_text(image, sorted_aligned_bb, img_store) -> List[str]:
         logger.info(f"image number {i} recognized as '{nice}'. Image position: x:{x} y:{y} w:{w} h:{h}")
 
         result.append(x)
+
+    for _, bb in enumerate(sorted_aligned_bb):
+        x, y, w, h = bb
+        image = cv2.rectangle(image, (x-5, y-5), (x + w+5, y + h+5), (36,255,12), 1)
+
+    img_store.add_image(image, "test")
+
     return result
 
 
 def ocr_result_to_value(text: List[str]) -> Optional[float]:
     cleaned = [x.strip() for x in text]
 
-    if len(cleaned) != 7:
+    if len(cleaned) != 6:
         logger.warning(f"{''.join(cleaned)} is not of length 7 has only {len(cleaned)}")
         return None
 
@@ -180,7 +147,7 @@ def ocr(input_: io.BytesIO) -> Optional[float]:
 
     global _timestamp
     _timestamp = datetime.utcnow().strftime("%Y_%m_%d-%H_%M_%S")
-    with ImageStore() as img_store:
+    with ImageStore(_config) as img_store:
         image = cv2.imdecode(np.fromstring(input_.read(), np.uint8), 1)
         img_store.add_image(image, "original")
 

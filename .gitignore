@@ -139,3 +139,4 @@ wpa_supplicant.conf
 /.idea
 /.vscode
 image_detection.ipynb
+/test/results/
