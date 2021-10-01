@@ -122,7 +122,7 @@ def image_to_text(image, sorted_aligned_bb, img_store) -> List[str]:
 def ocr_result_to_value(text: List[str]) -> Optional[float]:
     cleaned = [x.strip() for x in text]
 
-    if len(cleaned) != 6:
+    if len(cleaned) != 7:
         logger.warning(f"{''.join(cleaned)} is not of length 7 has only {len(cleaned)}")
         return None
 
