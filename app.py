@@ -1,10 +1,7 @@
 import click
-import io
-import time
 import RPi.GPIO as GPIO
 import time
 import _cfg
-import _image_processing
 import _ravendb
 import datetime
 
@@ -16,7 +13,7 @@ config = _cfg.config
 def capture():
     logger.info("initializing")
 
-    switch = _cfg.gpio_bcm_nr
+    switch = config.gpio_bcm_nr
 
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(switch, GPIO.IN)
@@ -26,7 +23,7 @@ def capture():
             if GPIO.input(switch):
                 _ravendb.store_result(0.01)
                 logger.info("reed contact triggered")
-                _delay_for_timeout_seconds(config.debounce_seconds)
+                _delay_for_seconds(config.debounce_seconds)
 
             _delay_for_seconds(config.timeout_seconds)
     finally:
