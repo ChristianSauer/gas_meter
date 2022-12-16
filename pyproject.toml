@@ -1,24 +1,16 @@
 [tool.poetry]
 name = "gas_meter"
 version = "0.1.0"
-description = "Reads gas usage from a gas meter"
+description = "Reads gas usage from a gas meter using a reed contanct"
 authors = ["ChristianSauer <christian.sauer@email.de>"]
 
 [tool.poetry.dependencies]
 python = "^3.7"
 click = "^7.1.2"
-opencv-python-headless = "^4.4.0"
-numpy = "^1.19.2"
-pytesseract = "^0.3.6"
 loguru = "^0.5.3"
 pyyaml = "^5.3.1"
 pyravendb = "^5.0.0"
 typing-extensions = "^3.7.4"
-
-[tool.poetry.dev-dependencies]
-jupyterlab = "^2.2.8"
-flake8 = "^3.8.3"
-pytest = "6.2.4"
 
 [build-system]
 requires = ["poetry>=0.12"]

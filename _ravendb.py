@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 import _cfg
 
+doc_id = "data/gas"
 config = _cfg.config
 
 _store = None
@@ -14,15 +15,6 @@ _store = None
 @dataclass(eq=True, frozen=True)
 class Data:
     readingType: str
-
-
-@dataclass(eq=True, frozen=True)
-class DebugData:
-    date: str
-    Id: str
-
-
-doc_id = "data/gas"
 
 
 def store_result(value: float):
@@ -36,7 +28,7 @@ def store_result(value: float):
             session.store(data, key=doc_id)
             session.save_changes()
 
-        time_series = session.time_series_for(doc_id, "gas m3 usage")
+        time_series = session.time_series_for(doc_id, config.ravendb_time_series_name)
         time_series.append(datetime.datetime.utcnow(), [value])
         session.save_changes()
 
