@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 ExecStart=/usr/bin/python3 -u app.py
-WorkingDirectory=/opt/app
+WorkingDirectory=/opt/gas_meter
 StandardOutput=inherit
 StandardError=inherit
 Restart=always
